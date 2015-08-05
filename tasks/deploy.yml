@@ -13,4 +13,4 @@
   - name: copy the binary to the server
     synchronize: src={{ lookup('env', 'GO_LINUX_BIN') }} dest={{ GOPATH }}
   - name: set up cron tasks
-    cron: name="send checkins" minute="0" job="{{ GOPATH }}/bin-linux-amd64/sendPrompts >> stdout.txt 2> stderr.txt"
+    cron: name="send checkins" minute="0" job="TWILIO_FROM_NUMBER=\"{{TWILIO_FROM_NUMBER}}\" TWILIO_ACCOUNT_SID={{TWILIO_ACCOUNT_SID}} TWILIO_AUTH_TOKEN={{TWILIO_AUTH_TOKEN}} {{ GOPATH }}/bin-linux-amd64/sendPrompts >> stdout.txt 2> stderr.txt"

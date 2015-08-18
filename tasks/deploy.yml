@@ -12,5 +12,7 @@
     file: path={{ GOPATH }} state=directory mode=0755
   - name: copy the binary to the server
     synchronize: src={{ lookup('env', 'GO_LINUX_BIN') }} dest={{ GOPATH }}
-  - name: set up cron tasks
-    cron: name="send checkins" minute="0" job="TWILIO_FROM_NUMBER=\"{{TWILIO_FROM_NUMBER}}\" TWILIO_ACCOUNT_SID={{TWILIO_ACCOUNT_SID}} TWILIO_AUTH_TOKEN={{TWILIO_AUTH_TOKEN}} {{ GOPATH }}/bin-linux-amd64/sendPrompts >> stdout.txt 2> stderr.txt"
+  - name: schedule checkin prompt
+    cron: name="send checkin prompts" minute="0" job="TWILIO_FROM_NUMBER=\"{{TWILIO_FROM_NUMBER}}\" TWILIO_ACCOUNT_SID={{TWILIO_ACCOUNT_SID}} TWILIO_AUTH_TOKEN={{TWILIO_AUTH_TOKEN}} {{ GOPATH }}/bin-linux-amd64/sendPrompts >> sendPrompts.txt 2>&1"
+  - name: schedule processing of incoming SMSes
+    cron: name="process incoming SMSes" minute="*/5" job="TWILIO_FROM_NUMBER=\"{{TWILIO_FROM_NUMBER}}\" TWILIO_ACCOUNT_SID={{TWILIO_ACCOUNT_SID}} TWILIO_AUTH_TOKEN={{TWILIO_AUTH_TOKEN}} {{ GOPATH }}/bin-linux-amd64/processIncoming >> processIncoming.txt 2>&1"

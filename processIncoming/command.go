@@ -12,11 +12,21 @@ func main() {
 	}
 
 	// Work on the first page's items.
-	models.RouteIncomingSmsPage(listPage)
+	numCheckins, numMisses, errs := models.RouteIncomingSmsPage(listPage)
 
 	// So long as there's a next page, repeat that.
 	for listPage.HasNextPage() {
 		listPage, err = listPage.NextPage()
-		models.RouteIncomingSmsPage(listPage)
+		addlCheckins, addlMisses, addlErrs := models.RouteIncomingSmsPage(listPage)
+		numCheckins += addlCheckins
+		numMisses += addlMisses
+		for _, err := range addlErrs {
+			errs = append(errs, err)
+		}
+	}
+
+	log.Printf("Processed %d checkins, skipped %d incoming SMSes, and found %d errors.", numCheckins, numMisses, len(errs))
+	for _, err := range errs {
+		log.Println("    " + err.Error())
 	}
 }

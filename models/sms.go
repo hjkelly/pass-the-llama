@@ -3,7 +3,7 @@ package models
 import (
 	"errors"
 	"fmt"
-	"github.com/carlosdp/twiliogo"
+	"github.com/hjkelly/twiliogo"
 	"os"
 	"time"
 )
@@ -41,9 +41,9 @@ func FetchIncomingSmsPage() (*twiliogo.MessageList, error) {
 	}
 
 	// Query for new messages, but only get ones from today just for sanity's sake.
-	now := time.Now()
-	dateSent := fmt.Sprintf("%4d-%2d-%2d", now.Year(), now.Month(), now.Day())
-	listPage, err := twiliogo.GetMessageList(client, twiliogo.To(fromNumber), twiliogo.DateSent(dateSent))
+	yesterday := time.Now().Add(-24 * time.Hour)
+	yesterdayStr := fmt.Sprintf("%4d-%02d-%02d", yesterday.Year(), yesterday.Month(), yesterday.Day())
+	listPage, err := twiliogo.GetMessageList(client, twiliogo.To(fromNumber), twiliogo.DateSentAfter(yesterdayStr))
 	if err != nil {
 		return nil, err
 	} else {
@@ -51,33 +51,49 @@ func FetchIncomingSmsPage() (*twiliogo.MessageList, error) {
 	}
 }
 
-func RouteIncomingSmsPage(listPage *twiliogo.MessageList) (int, int) {
-	var checkins, misses int
-
+func RouteIncomingSmsPage(listPage *twiliogo.MessageList) (numCheckins int, numMisses int, errs []error) {
 	for _, message := range listPage.GetMessages() {
-		error := RouteIncomingSms(message)
-		if error != nil {
-			misses += 1
+		isCheckin, isMiss, err := RouteIncomingSms(message)
+		if err != nil {
+			errs = append(errs, err)
+		} else if isMiss {
+			numMisses += 1
+		} else if isCheckin {
+			numCheckins += 1
 		} else {
-			checkins += 1
+			errs = append(errs, errors.New("RouteIncomingSms didn't report the outcome, nor did it report an error."))
 		}
 	}
-
-	return checkins, misses
+	return
 }
 
-func RouteIncomingSms(message twiliogo.Message) error {
+func RouteIncomingSms(message twiliogo.Message) (isCheckin bool, isMiss bool, err error) {
 	// Right now, something is either a checkin or it isn't. Consider it a
 	// checkin if it starts with good, bad, or ugly.
-	status, err := getCheckinStatus(message.Body)
-	if err == nil {
-		// We aren't tallying up errors just yet...
-		err = AddCheckinForAccountPhone(message.From, Checkin{
-			TwilioSid:        message.Sid,
-			Status:           status,
-			PartnersNotified: false,
-			RoutedAt:         time.Now(),
-		})
+	status, statusErr := getCheckinStatus(message.Body)
+
+	// If we couldn't figure out what to do with the message body, give up.
+	if statusErr != nil {
+		isMiss = true
+		return
+	} else {
+		isCheckin = true
 	}
-	return err
+
+	// Parse the DateCreated and use that as the timestamp.
+	timestamp, err := time.Parse(time.RFC1123Z, message.DateCreated)
+	if err != nil {
+		err = errors.New("Couldn't parse message's DateCreated as RFC 1123Z: '" + message.DateCreated + "'")
+		return
+	}
+
+	// We aren't tallying up errors just yet...
+	err = AddCheckinForAccountPhone(message.From, Checkin{
+		TwilioSid:        message.Sid,
+		Status:           status,
+		PartnersNotified: false,
+		ReceivedAt:       timestamp,
+		RoutedAt:         time.Now(),
+	})
+	return
 }

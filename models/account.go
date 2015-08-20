@@ -22,12 +22,19 @@ type Checkin struct {
 	TwilioSid        string    `bson:"twilioSid"`
 	Status           string    `bson:"status"`
 	PartnersNotified bool      `bson:"partnersNotified"`
+	ReceivedAt       time.Time `bson:"receivedAt"`
 	RoutedAt         time.Time `bson:"routedAt"`
 }
 
 func (a *Account) SendPrompt() error {
 	// Pull info from the environment vars.
-	return SendSms(a.PhoneNumber, "How have things been since your last checkin? Reply 'good', 'bad', or 'ugly'.")
+	err := SendSms(a.PhoneNumber, "How have things been since your last checkin? Reply 'good', 'bad', or 'ugly'.")
+	// If there's an error, give them some context.
+	if err != nil {
+		return errors.New("Sending text to " + a.PhoneNumber + "resulted in error" + err.Error())
+	} else {
+		return nil
+	}
 }
 
 func getCheckinStatus(messageBody string) (string, error) {
@@ -66,7 +73,12 @@ func GetAccountsNeedingPrompt(hour int) *[]Account {
 
 func AddCheckinForAccountPhone(accountPhoneNumber string, c Checkin) error {
 	db := getDb()
-	err := db.C(accountCollection).Update(bson.M{"phoneNumber": accountPhoneNumber}, bson.M{"$push": bson.M{"checkins": c}})
+	_, err := db.C(accountCollection).UpdateAll(bson.M{
+		"phoneNumber":        accountPhoneNumber,
+		"checkins.twilioSid": bson.M{"$ne": c.TwilioSid},
+	}, bson.M{
+		"$push": bson.M{"checkins": c},
+	})
 	if err != nil {
 		log.Printf("Couldn't update account with phone number:\n%+v\nReason:\n%s", accountPhoneNumber, err.Error())
 	}

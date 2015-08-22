@@ -1,4 +1,4 @@
-package models
+package queries
 
 import (
 	"errors"
@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+// Use the environment variables to pass back a Twilio client and the phone
+// number (string) we're sending from.
 func getTwilioClientAndFromNumber() (twiliogo.Client, string, error) {
 	// Pull info from the environment vars.
 	fromNumber := os.Getenv("TWILIO_FROM_NUMBER")
@@ -19,6 +21,8 @@ func getTwilioClientAndFromNumber() (twiliogo.Client, string, error) {
 	return twiliogo.NewClient(accountSid, authToken), fromNumber, nil
 }
 
+// Send a message to someone with a certain body. This will always be from our
+// 'From' number.
 func SendSms(toNumber, body string) error {
 	// Get credentials and make sure we didn't have any problems initializing
 	// the client.
@@ -49,51 +53,4 @@ func FetchIncomingSmsPage() (*twiliogo.MessageList, error) {
 	} else {
 		return listPage, nil
 	}
-}
-
-func RouteIncomingSmsPage(listPage *twiliogo.MessageList) (numCheckins int, numMisses int, errs []error) {
-	for _, message := range listPage.GetMessages() {
-		isCheckin, isMiss, err := RouteIncomingSms(message)
-		if err != nil {
-			errs = append(errs, err)
-		} else if isMiss {
-			numMisses += 1
-		} else if isCheckin {
-			numCheckins += 1
-		} else {
-			errs = append(errs, errors.New("RouteIncomingSms didn't report the outcome, nor did it report an error."))
-		}
-	}
-	return
-}
-
-func RouteIncomingSms(message twiliogo.Message) (isCheckin bool, isMiss bool, err error) {
-	// Right now, something is either a checkin or it isn't. Consider it a
-	// checkin if it starts with good, bad, or ugly.
-	status, statusErr := getCheckinStatus(message.Body)
-
-	// If we couldn't figure out what to do with the message body, give up.
-	if statusErr != nil {
-		isMiss = true
-		return
-	} else {
-		isCheckin = true
-	}
-
-	// Parse the DateCreated and use that as the timestamp.
-	timestamp, err := time.Parse(time.RFC1123Z, message.DateCreated)
-	if err != nil {
-		err = errors.New("Couldn't parse message's DateCreated as RFC 1123Z: '" + message.DateCreated + "'")
-		return
-	}
-
-	// We aren't tallying up errors just yet...
-	err = AddCheckinForAccountPhone(message.From, Checkin{
-		TwilioSid:        message.Sid,
-		Status:           status,
-		PartnersNotified: false,
-		ReceivedAt:       timestamp,
-		RoutedAt:         time.Now(),
-	})
-	return
 }

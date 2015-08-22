@@ -99,19 +99,19 @@ func main() {
 	numSaved, err := SaveNewCheckins()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		fmt.Fprintf(os.Stdout, "Saved %d new checkins.", numSaved)
+		fmt.Fprintf(os.Stdout, "Saved %d new checkins.\n", numSaved)
 		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stdout, "Saved %d new checkins.", numSaved)
+		fmt.Fprintf(os.Stdout, "Saved %d new checkins.\n", numSaved)
 	}
 
 	// Notify partners of new checkins.
 	numNotificationsSent, err := NotifyPartnersOfNewCheckins()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		fmt.Fprintf(os.Stdout, "Sent %d notifications.", numNotificationsSent)
+		fmt.Fprintf(os.Stdout, "Sent %d notifications.\n", numNotificationsSent)
 		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stdout, "Sent %d notifications.", numNotificationsSent)
+		fmt.Fprintf(os.Stdout, "Sent %d notifications.\n", numNotificationsSent)
 	}
 }

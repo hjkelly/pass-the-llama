@@ -30,10 +30,10 @@ func main() {
 	numSent, err := SendHourlyPrompts()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		fmt.Fprintf(os.Stdout, "Sent %d checkin prompts.", numSent)
+		fmt.Fprintf(os.Stdout, "Sent %d checkin prompts.\n", numSent)
 		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stdout, "Sent %d checkin prompts.", numSent)
+		fmt.Fprintf(os.Stdout, "Sent %d checkin prompts.\n", numSent)
 		os.Exit(0)
 	}
 }

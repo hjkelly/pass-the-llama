@@ -37,7 +37,9 @@ func ParseCheckinFromTwilioMessage(m twiliogo.Message) (*Checkin, error) {
 
 func (c *Checkin) PushToAccount(phoneNumber string) error {
 	return queries.UpdateAccount(bson.M{
-		"phoneNumber": phoneNumber,
+		"phoneNumber":                phoneNumber,
+		"archivedCheckins.twilioSid": bson.M{"$ne": c.TwilioSid},
+		"newCheckins.twilioSid":      bson.M{"$ne": c.TwilioSid},
 	}, bson.M{
 		"$push": bson.M{"newCheckins": c},
 	})

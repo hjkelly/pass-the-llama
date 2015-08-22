@@ -38,7 +38,7 @@ func ListAccountsNeedingPrompt(hour int, result interface{}) error {
 
 func ListAccountsWithNewCheckins(result interface{}) error {
 	return getDb().C(accountCollection).Find(bson.M{
-		"newCheckins": bson.M{"$size": bson.M{"$gt": 0}},
+		"newCheckins.0": bson.M{"$exists": true},
 	}).All(result)
 }
 

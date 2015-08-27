@@ -9,9 +9,7 @@ import (
 	"os"
 )
 
-func SaveNewCheckins() (int, error) {
-	var err error
-	numSaved := 0
+func SaveNewCheckins() (numSaved int, numNotSaved int, err error) {
 	page := new(twiliogo.MessageList)
 
 	// Load the first page.
@@ -29,9 +27,9 @@ func SaveNewCheckins() (int, error) {
 			c, err := models.ParseCheckinFromTwilioMessage(message)
 			// If there was NOT an error, save the new checkin and tally it up.
 			if err == nil {
-				err = c.PushToAccount(message.From)
-				if err != nil {
-					return numSaved, err
+				nonFatalErr := c.PushToAccount(message.From)
+				if nonFatalErr != nil {
+					numNotSaved++
 				} else {
 					numSaved++
 				}
@@ -46,7 +44,7 @@ func SaveNewCheckins() (int, error) {
 			page, err = page.NextPage()
 		}
 	}
-	return numSaved, err
+	return
 }
 
 func NotifyPartnersOfNewCheckins() (numNotificationsSent int, err error) {
@@ -54,7 +52,7 @@ func NotifyPartnersOfNewCheckins() (numNotificationsSent int, err error) {
 	// Which accounts need to have notifications sent?
 	accountsWithNewCheckins, err = models.ListAccountsWithNewCheckins()
 	if err != nil {
-		return 0, err
+		return
 	}
 
 	// Loop through each and send notifications.
@@ -96,13 +94,12 @@ func NotifyPartnersOfNewCheckins() (numNotificationsSent int, err error) {
 }
 
 func main() {
-	numSaved, err := SaveNewCheckins()
+	numSaved, numNotSaved, err := SaveNewCheckins()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error()+"\n")
-		fmt.Fprintf(os.Stdout, "Saved %d new checkins.\n", numSaved)
+		fmt.Fprintf(os.Stdout, "SaveNewCheckins: %d new checkins, %d not saved, err: %s\n", numSaved, numNotSaved, err.Error())
 		os.Exit(1)
 	} else {
-		fmt.Fprintf(os.Stdout, "Saved %d new checkins.\n", numSaved)
+		fmt.Fprintf(os.Stdout, "SaveNewCheckins: %d new checkins, %d not saved.\n", numSaved, numNotSaved)
 	}
 
 	// Notify partners of new checkins.
